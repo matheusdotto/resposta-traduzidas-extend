@@ -1,0 +1,298 @@
+<!doctype html>
+<meta charset="utf-8" />
+<title>Teste do painel</title>
+<pre id="out" style="margin-left: 760px">rodando...</pre>
+<script>
+  // Simula o Chrome e os servidores, para testar o painel de verdade sem chave.
+  window.stored = { apiKey: "k", myLanguage: "pt-BR", theirLanguage: "en", context: "Sou gerente." };
+  window.runtimeMessages = [];
+  window.chrome = {
+    storage: {
+      local: {
+        get: async () => ({ ...window.stored }),
+        set: async (values) => Object.assign(window.stored, values),
+      },
+    },
+    runtime: { sendMessage: (m) => window.runtimeMessages.push(m), onMessage: { addListener: (fn) => { window.showPanelListener = fn; } } },
+  };
+  window.sockets = [];
+  window.WebSocket = class {
+    constructor() {
+      this.sent = [];
+      window.sockets.push(this);
+      setTimeout(() => this.onopen(), 0);
+    }
+    send(text) {
+      this.sent.push(JSON.parse(text));
+    }
+    close() {
+      this.closed = true;
+    }
+  };
+  const encoder = new TextEncoder();
+  const event = (text) =>
+    encoder.encode(`data: ${JSON.stringify({ candidates: [{ content: { parts: [{ text }] } }] })}\n\n`);
+  window.nextAnswer = ["[[ELES]]\nBy Friday.\n[[EU]]\nAté sexta."];
+  window.holdAnswer = false;
+  window.fetchBodies = [];
+  window.answerStatus = 200;
+  window.fetch = async (url, init) => {
+    window.fetchBodies.push(JSON.parse(init.body));
+    if (window.answerStatus !== 200) {
+      return new Response(JSON.stringify({ error: { message: "Cota esgotada." } }), {
+        status: window.answerStatus,
+      });
+    }
+    return new Response(
+      new ReadableStream({
+        start(controller) {
+          for (const text of window.nextAnswer) controller.enqueue(event(text));
+          if (!window.holdAnswer) {
+            controller.close();
+            return;
+          }
+          init.signal.addEventListener("abort", () =>
+            controller.error(new DOMException("cancelado", "AbortError"))
+          );
+        },
+      })
+    );
+  };
+  const attachShadow = Element.prototype.attachShadow;
+  Element.prototype.attachShadow = function (init) {
+    return (window.panelRoot = attachShadow.call(this, init));
+  };
+  window.captureCalls = [];
+  window.RespostasCapture = { createTabCapture: (callbacks) => {
+    window.captureCallbacks = callbacks;
+    return { start: async () => { window.captureCalls.push({on:true}); return true; },
+      stop: () => window.captureCalls.push({on:false}) };
+  }};
+  window.pageMessages = [];
+  window.addEventListener("message", (e) => {
+    if (e.data?.source === "respostas-reuniao") window.pageMessages.push(e.data);
+  });
+  window.copied = [];
+  Object.defineProperty(navigator, "clipboard", {
+    value: { writeText: async (t) => window.copied.push(t) },
+  });
+</script>
+<script src="../src/gemini-translate.js"></script>
+<script src="../src/session-manager.js"></script>
+<script src="../src/interview-prompt.js"></script>
+<script src="../src/answers.js"></script>
+<script src="../src/status.js"></script>
+<script src="../src/panel-dom.js"></script>
+<script src="../src/content.js"></script>
+<script>
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  const receive = (socket, message) => socket.onmessage({ data: JSON.stringify(message) });
+  const say = (socket, text, translated = text) =>
+    receive(socket, {
+      serverContent: {
+        inputTranscription: { text },
+        outputTranscription: { text: translated },
+      },
+    });
+  const up = (m) => m.type === "remote-state" ? window.captureCallbacks.onState(m) : window.captureCallbacks.onAudio(m.data, m.hasSpeech);
+  const lastCapture = () => window.captureCalls.at(-1);
+
+  window.addEventListener("load", async () => {
+    const results = (window.results = {});
+    try {
+      await wait(100);
+      const root = window.panelRoot;
+      const q = (s) => root.querySelector(s);
+
+      // Interface e aviso.
+      results.ownBrand = q("h1").textContent === "Respostas em Reunião";
+      results.restoresLanguages =
+        q(".my-language").value === "pt-BR" && q(".their-language").value === "en";
+      results.labelsShowLanguages =
+        /Inglês/.test(q(".label-original").textContent) &&
+        /Português/.test(q(".label-translated").textContent);
+      results.noticeStartsUnchecked = q(".notice").checked === false;
+      results.toggleDisabledWithoutNotice = q(".toggle").disabled === true;
+      results.explainsNotice = /Marque o aviso/.test(q(".status").textContent);
+
+      q(".copy-notice").click();
+      await wait(20);
+      results.copiesNotice = /IA/.test(window.copied[0] ?? "");
+      results.writesNothingToMeetingChat = window.sockets.length === 0;
+
+      q(".settings").click();
+      results.settingsOpen = window.runtimeMessages.at(-1)?.type === "open-options";
+      q(".help").click();
+      results.helpShows = q(".help-text").textContent.length > 20 && !q(".help-text").hidden;
+
+      // Idiomas iguais avisam.
+      q(".their-language").value = "pt-BR";
+      q(".their-language").dispatchEvent(new Event("change"));
+      await wait(20);
+      results.warnsSameLanguage = /mesmo idioma/.test(q(".language-hint").textContent);
+      q(".their-language").value = "en";
+      q(".their-language").dispatchEvent(new Event("change"));
+      await wait(20);
+      results.savesLanguage = window.stored.theirLanguage === "en";
+      results.hintClears = q(".language-hint").textContent === "";
+
+      // Ligar.
+      q(".notice").click();
+      results.toggleEnabledWithNotice = q(".toggle").disabled === false;
+      q(".toggle").click();
+      await wait(50);
+      const socket = window.sockets[0];
+      results.translatesToMyLanguage =
+        socket.sent[0].setup.generationConfig.translationConfig.targetLanguageCode === "pt-BR";
+      results.captureStartsBeforeGemini = lastCapture()?.on === true;
+      receive(socket, { setupComplete: {} });
+      await wait(20);
+      results.captureStarts = lastCapture()?.on === true;
+      results.toggleLabelOn = q(".toggle").textContent === "Desligar";
+      results.noticeLockedWhileOn = q(".notice").disabled === true;
+
+      up({ type: "remote-state", tracks: 2, hearing: true, peak: 0.5, sentFrames: 120, contextState: "running" });
+      await wait(20);
+      results.showsListening = /Ouvindo/.test(q(".status").textContent);
+      results.showsDiagnostics = /Enviado: 12 s/.test(q(".diag").textContent);
+
+      const before = socket.sent.length;
+      up({ type: "remote-audio", data: "QUJD", hasSpeech: true });
+      await wait(20);
+      results.audioGoesToTranslation = socket.sent.length === before + 1;
+
+      // Fala e resposta automática.
+      say(socket, "What is the deadline?", "Qual é o prazo?");
+      results.showsOriginal = q(".original").textContent === "What is the deadline?";
+      results.showsTranslated = q(".translated").textContent === "Qual é o prazo?";
+      results.noAnswerBeforePause = window.fetchBodies.length === 0;
+      await wait(1500);
+      results.answersAfterPause = window.fetchBodies.length === 1;
+      const prompt = JSON.stringify(window.fetchBodies[0]);
+      results.sendsSpeechAndContext = prompt.includes("What is the deadline?") && prompt.includes("Sou gerente.");
+      await wait(50);
+      results.answerTheirs = q(".answer-theirs").textContent === "By Friday.";
+      results.answerMine = q(".answer-mine").textContent === "Até sexta.";
+
+      // Sem pergunta: a resposta anterior continua.
+      window.nextAnswer = ["SEM_PERGUNTA"];
+      say(socket, " Thanks.", " Obrigado.");
+      await wait(1500);
+      await wait(50);
+      results.noQuestionKeepsAnswer = q(".answer-theirs").textContent === "By Friday.";
+      results.answeredOnlyNewSpeech = JSON.stringify(window.fetchBodies.at(-1)).includes("Thanks.");
+
+      // Sem fala nova, não gasta outra chamada.
+      const calls = window.fetchBodies.length;
+      await wait(1500);
+      results.noExtraCallsWithoutSpeech = window.fetchBodies.length === calls;
+
+      // Responder agora.
+      window.nextAnswer = ["[[ELES]]\nForced.\n[[EU]]\nForçada."];
+      q(".answer-now").click();
+      await wait(50);
+      results.answerNowWorks = q(".answer-theirs").textContent === "Forced.";
+      results.answerNowDoesNotAllowRefusal = !JSON.stringify(window.fetchBodies.at(-1)).includes("SEM_PERGUNTA");
+
+      // Resposta em andamento: limpa o outro idioma e volta à anterior se for cancelada.
+      window.nextAnswer = ["[[ELES]]\nBy Friday.\n[[EU]]\nAté sexta."];
+      q(".answer-now").click();
+      await wait(50);
+      window.holdAnswer = true;
+      window.nextAnswer = ["[[ELES]]\nIt costs ten th"];
+      say(socket, " How much does it cost?", " Quanto custa?");
+      q(".answer-now").click();
+      await wait(50);
+      results.streamClearsOtherLanguage =
+        q(".answer-theirs").textContent === "It costs ten th" && q(".answer-mine").textContent === "";
+      window.holdAnswer = false;
+      window.nextAnswer = ["SEM_PERGUNTA"];
+      say(socket, " Thanks.", " Obrigado.");
+      await wait(1500);
+      await wait(50);
+      const replaced = JSON.stringify(window.fetchBodies.at(-1));
+      results.cancelledRestoresPrevious =
+        q(".answer-theirs").textContent === "By Friday." && q(".answer-mine").textContent === "Até sexta.";
+      results.replacementKeepsQuestion = replaced.split("Fala nova")[1].includes("How much");
+      results.replacementKeepsForce = !replaced.includes("SEM_PERGUNTA");
+
+      // Respostas fora do formato avisam e não apagam a anterior.
+      window.nextAnswer = ["Texto sem marcadores."];
+      q(".answer-now").click();
+      await wait(50);
+      results.unexpectedFormatWarns = /formato inesperado/.test(q(".answer-status").textContent);
+      results.unexpectedFormatRestores = q(".answer-theirs").textContent === "By Friday.";
+      window.nextAnswer = ["[[ELES]]\nSó um idioma."];
+      q(".answer-now").click();
+      await wait(50);
+      results.incompleteWarns = /incompleta/.test(q(".answer-status").textContent);
+      results.incompleteRestores =
+        q(".answer-theirs").textContent === "By Friday." && q(".answer-mine").textContent === "Até sexta.";
+
+      // Falha nas respostas não derruba a transcrição.
+      window.answerStatus = 429;
+      q(".answer-now").click();
+      await wait(50);
+      results.answerFailureShown = /Cota esgotada/.test(q(".answer-status").textContent);
+      results.answerFailureLeavesTranslation = !/Cota esgotada/.test(q(".status").textContent);
+      say(socket, " More.", " Mais.");
+      results.transcriptContinuesAfterFailure = q(".original").textContent.endsWith("More.");
+      window.answerStatus = 200;
+
+      // Limpar e tamanho.
+      q(".clear").click();
+      results.clearEmptiesAll = [".original", ".translated", ".answer-theirs", ".answer-mine"].every(
+        (s) => q(s).textContent === ""
+      );
+      const width = () => q(".panel").getBoundingClientRect().width;
+      const medium = width();
+      q(".size").click();
+      await wait(20);
+      results.sizeChanges = width() !== medium && typeof window.stored.panelSize === "string";
+
+      // Minimizar deixa só o cabeçalho e fica salvo.
+      results.minimizeLabel = q(".minimize").textContent === "Minimizar";
+      q(".minimize").click();
+      await wait(20);
+      results.minimizeHidesBody = q(".body").hidden === true && q(".minimize").textContent === "Expandir";
+      results.minimizeSaved = window.stored.panelMinimized === true;
+      q(".minimize").click();
+      await wait(20);
+      results.expandShowsBody = q(".body").hidden === false && window.stored.panelMinimized === false;
+
+      // Falha da tradução e desligar.
+      q(".toggle").click();
+      await wait(20);
+      results.stopClosesTranslation = socket.closed === true && lastCapture()?.on === false;
+      results.noticeUnlockedWhenOff = q(".notice").disabled === false;
+      up({ type: "remote-audio", data: "QUJD", hasSpeech: true });
+      await wait(20);
+      results.ignoresAudioWhenOff = window.sockets.length === 1;
+
+      q(".toggle").click();
+      await wait(50);
+      const failing = window.sockets.at(-1);
+      receive(failing, { setupComplete: {} });
+      failing.onclose({ code: 1008, reason: "Chave recusada." });
+      await wait(20);
+      results.translationFailureShown = /Chave recusada/.test(q(".status").textContent);
+      results.translationFailureStopsCapture = lastCapture()?.on === false;
+
+      // Deixa o painel preenchido para a captura de tela.
+      q(".size").click();
+      q(".size").click();
+      q(".toggle").click();
+      await wait(50);
+      const shown = window.sockets.at(-1);
+      receive(shown, { setupComplete: {} });
+      window.nextAnswer = ["[[ELES]]\nWe can deliver by Friday.\n[[EU]]\nPodemos entregar até sexta."];
+      say(shown, "When can you deliver the first version?", "Quando vocês podem entregar a primeira versão?");
+      q(".answer-now").click();
+      await wait(50);
+    } catch (err) {
+      results.error = err.message;
+    }
+    window.done = true;
+    document.getElementById("out").textContent = JSON.stringify(results, null, 2);
+  });
+</script>

@@ -1,0 +1,31 @@
+<!doctype html><meta charset="utf-8"><title>Teste da captura da aba</title>
+<button id="run">Testar pipeline com áudio sintético</button><pre id="out">aguardando...</pre>
+<script src="../src/audio-utils.js"></script><script src="../src/capture.js"></script>
+<script>
+const wait = ms => new Promise(r=>setTimeout(r,ms));
+document.querySelector('#run').onclick = async () => {
+  const results=window.results={}; let producer, capture;
+  try {
+    producer=new AudioContext(); await producer.resume();
+    const osc=producer.createOscillator(), dest=producer.createMediaStreamDestination();
+    osc.connect(dest); osc.start();
+    const video=document.createElement('canvas').captureStream().getVideoTracks()[0];
+    const stream=new MediaStream([...dest.stream.getAudioTracks(),video]);
+    let frames=0, latest;
+    capture=RespostasCapture.createTabCapture({mediaDevices:{getDisplayMedia:async()=>stream},
+      onAudio:(data)=>{if(data.length)frames++;},onState:s=>latest=s,onError:e=>{throw Error(e);}});
+    await capture.start(); await wait(1500);
+    results.realWebAudioProducesPCM=frames>0;
+    results.reportsLiveSignal=latest?.peak>0 && latest?.hearing===true;
+    results.reportsTabSource=latest?.captureMode==='tab';
+    capture.stop(); const before=frames; await wait(300);
+    results.stopPreventsFrames=frames===before;
+    results.stopReleasesTracks=stream.getTracks().every(t=>t.readyState==='ended');
+    const noAudio=new MediaStream([document.createElement('canvas').captureStream().getVideoTracks()[0]]);
+    const bad=RespostasCapture.createTabCapture({mediaDevices:{getDisplayMedia:async()=>noAudio},onAudio(){},onState(){},onError(){}});
+    try {await bad.start();results.missingAudioRejected=false;}catch(e){results.missingAudioRejected=e.message.includes('Compartilhar áudio');}
+  } catch(e) {results.error=e.stack;}
+  finally {capture?.stop();await producer?.close();}
+  document.querySelector('#out').textContent=JSON.stringify(results,null,2);window.done=true;
+};
+</script>

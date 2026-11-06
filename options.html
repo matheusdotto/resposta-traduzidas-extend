@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <title>Respostas em Reunião: configurações</title>
+    <style>
+      body { max-width: 560px; margin: 32px auto; padding: 0 16px; background: #0b1526; color: #e2e8f0;
+        font: 14px/1.5 system-ui, sans-serif; }
+      h1 { font-size: 20px; }
+      label { display: block; margin-top: 16px; font-weight: 600; }
+      input, textarea, select { width: 100%; box-sizing: border-box; margin-top: 6px; padding: 8px; border: 1px solid #334155;
+        border-radius: 8px; background: #12233d; color: #fff; font: inherit; }
+      textarea { min-height: 160px; resize: vertical; }
+      .note { margin: 8px 0 0; color: #94a3b8; font-size: 13px; }
+      .saved { min-height: 20px; margin: 12px 0 0; color: #86efac; }
+    </style>
+  </head>
+  <body>
+    <h1>Respostas em Reunião</h1>
+    <label for="key">Chave de API do Gemini</label>
+    <input id="key" type="password" autocomplete="off" spellcheck="false" />
+    <label for="openai-key">Chave de API da OpenAI</label>
+    <input id="openai-key" type="password" autocomplete="off" spellcheck="false" />
+    <label for="answer-provider">Provedor das sugestões de resposta</label>
+    <select id="answer-provider"><option value="gemini">Gemini</option><option value="openai">GPT (OpenAI)</option></select>
+    <p class="note">A chave Gemini é necessária para transcrição e tradução. As sugestões usam o provedor selecionado. Se alterar a seleção durante a captura, desligue e ligue novamente.</p>
+    <label for="context">Contexto adicional da reunião</label>
+    <textarea id="context" placeholder="Seu cargo, o projeto, prazos e o que mais ajudar nas respostas."></textarea>
+    <p class="note">O currículo de Matheus e as instruções de entrevista Java já estão incluídos. Este campo complementa o contexto e é enviado ao provedor selecionado a cada pedido de resposta. Não inclua senhas ou dados confidenciais.</p>
+    <p class="saved" id="saved"></p>
+    <p class="note">
+      A fala dos participantes é enviada ao Google. Avise todos antes de ligar. Na faixa gratuita, o
+      conteúdo enviado para a transcrição pode ser usado para melhorar os produtos do Google.
+    </p>
+    <details style="margin-top:20px">
+      <summary>Ver currículo e instruções de entrevista incluídos</summary>
+      <label for="interview-prompt">Contexto padrão usado nas respostas</label>
+      <textarea id="interview-prompt" readonly spellcheck="false" style="min-height:360px"></textarea>
+      <p class="note">Incluído automaticamente em cada pedido de resposta. Os dados pessoais só devem aparecer quando a pergunta pedir. Use o campo de contexto adicional para complementar as informações.</p>
+    </details>
+    <script src="src/interview-prompt.js"></script>
+    <script src="options.js"></script>
+  </body>
+</html>

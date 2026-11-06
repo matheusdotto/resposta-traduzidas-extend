@@ -1,0 +1,72 @@
+{
+  "manifest_version": 3,
+  "name": "Respostas em Reunião",
+  "version": "0.4.4",
+  "description": "Transcreve e traduz a fala dos outros em reuniões avisadas no Meet, Teams e Zoom e sugere respostas, usando a sua própria chave do Gemini.",
+  "permissions": [
+    "storage",
+    "scripting"
+  ],
+  "action": {
+    "default_title": "Mostrar painel na reunião; configurações nas outras páginas"
+  },
+  "options_page": "options.html",
+  "background": {
+    "service_worker": "background.js"
+  },
+  "host_permissions": [
+    "https://generativelanguage.googleapis.com/*",
+    "https://meet.google.com/*",
+    "https://*.teams.microsoft.com/*",
+    "https://*.teams.live.com/*",
+    "https://*.teams.cloud.microsoft/*",
+    "https://*.zoom.us/*",
+    "https://api.openai.com/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://meet.google.com/*",
+        "https://*.teams.microsoft.com/*",
+        "https://*.teams.live.com/*",
+        "https://*.teams.cloud.microsoft/*"
+      ],
+      "js": [
+        "src/audio-utils.js",
+        "src/capture.js",
+        "src/gemini-translate.js",
+        "src/session-manager.js",
+        "src/interview-prompt.js",
+        "src/answers.js",
+        "src/status.js",
+        "src/panel-dom.js",
+        "src/content.js"
+      ],
+      "run_at": "document_start",
+      "world": "ISOLATED",
+      "all_frames": false,
+      "match_about_blank": true,
+      "match_origin_as_fallback": true
+    },
+    {
+      "matches": [
+        "https://*.zoom.us/wc/*"
+      ],
+      "js": [
+        "src/audio-utils.js",
+        "src/capture.js",
+        "src/gemini-translate.js",
+        "src/session-manager.js",
+        "src/interview-prompt.js",
+        "src/answers.js",
+        "src/status.js",
+        "src/panel-dom.js",
+        "src/content.js"
+      ],
+      "run_at": "document_start",
+      "world": "ISOLATED",
+      "all_frames": false
+    }
+  ],
+  "minimum_chrome_version": "119"
+}
