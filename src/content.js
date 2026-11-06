@@ -29,7 +29,7 @@
     answerState: "idle",
     answerReason: "",
   };
-  const settings = { myLanguage: "pt-BR", theirLanguage: "en", context: "", captureSource: "tab", manualAnswers: false };
+  const settings = { myLanguage: "pt-BR", theirLanguage: "en", context: "", interviewPrompt: globalThis.RespostasInterviewPrompt || "", captureSource: "tab", manualAnswers: false };
   let panelSize = "medium";
   let panelMinimized = false;
   let committedAnswer = { theirs: "", mine: "" };
@@ -41,6 +41,13 @@
   let ui = null;
   let panelHost = null;
   let startAttempt = 0;
+
+  chrome.storage.onChanged?.addListener((changes, area) => {
+    if (area === "local" && changes.interviewPrompt) {
+      const value = changes.interviewPrompt.newValue;
+      settings.interviewPrompt = typeof value === "string" ? value : (globalThis.RespostasInterviewPrompt || "");
+    }
+  });
 
   const isActive = () => ACTIVE.has(state.connection);
 
@@ -145,6 +152,7 @@
   }
 
   function generateAnswer(request) {
+    request = { ...request, interviewPrompt: settings.interviewPrompt };
     failedRequest = null;
     inFlight = { latest: request.latest, force: request.force, request };
     setAnswerState("generating");
@@ -194,7 +202,7 @@
     // Abrir o seletor antes de aguardar storage ou Gemini preserva o gesto do clique.
     try {
       const [captured, stored] = await Promise.all([
-        recorder.start({ mode: settings.captureSource }), chrome.storage.local.get(["apiKey", "context", "answerProvider", "openaiKey"]),
+        recorder.start({ mode: settings.captureSource }), chrome.storage.local.get(["apiKey", "context", "answerProvider", "openaiKey", "interviewPrompt"]),
       ]);
       if (attempt !== startAttempt || !captured) return;
       if (!stored.apiKey) { recorder.stop(); setConnection("no-key"); return; }
@@ -205,6 +213,7 @@
         return;
       }
       settings.context = stored.context ?? "";
+      settings.interviewPrompt = typeof stored.interviewPrompt === "string" ? stored.interviewPrompt : (globalThis.RespostasInterviewPrompt || "");
       state.responses = 0;
       state.reconnects = 0;
       answers = createAnswerClient({ apiKey: stored.apiKey, provider });

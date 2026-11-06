@@ -1,31 +1,46 @@
+const keyInput = document.getElementById("key");
 const openaiKeyInput = document.getElementById("openai-key");
 const providerInput = document.getElementById("answer-provider");
-const keyInput = document.getElementById("key");
 const contextInput = document.getElementById("context");
+const promptInput = document.getElementById("interview-prompt");
 const saved = document.getElementById("saved");
+const defaultPrompt = globalThis.RespostasInterviewPrompt || "";
 
-chrome.storage.local.get(["apiKey", "context", "openaiKey", "answerProvider"]).then(({ apiKey, context, openaiKey, answerProvider }) => {
-  openaiKeyInput.value = openaiKey ?? "";
-  providerInput.value = answerProvider === "openai" ? "openai" : "gemini";
-  keyInput.value = apiKey ?? "";
-  contextInput.value = context ?? "";
-});
+const fields = [
+  [keyInput, "apiKey", "input"],
+  [openaiKeyInput, "openaiKey", "input"],
+  [providerInput, "answerProvider", "change"],
+  [contextInput, "context", "input"],
+  [promptInput, "interviewPrompt", "input"],
+];
+const edited = new Set();
 
-async function save() {
-  await chrome.storage.local.set({
-    openaiKey: openaiKeyInput.value.trim(),
-    answerProvider: providerInput.value,
-    apiKey: keyInput.value.trim(),
-    context: contextInput.value.trim(),
-  });
-  saved.textContent = "Salvo.";
+async function saveField(element, name) {
+  edited.add(name);
+  try {
+    const value = name === "apiKey" || name === "openaiKey" ? element.value.trim() : element.value;
+    await chrome.storage.local.set({ [name]: value });
+    saved.textContent = "Salvo.";
+  } catch {
+    saved.textContent = "Não foi possível salvar. Tente editar novamente.";
+  }
 }
 
-keyInput.addEventListener("input", save);
-contextInput.addEventListener("input", save);
+for (const [element, name, event] of fields) {
+  element.addEventListener(event, () => saveField(element, name));
+}
 
-// Apenas visualização: não sobrescreve a chave nem o contexto adicional salvo.
-document.getElementById("interview-prompt").value = globalThis.RespostasInterviewPrompt || "Contexto de entrevista indisponível. Recarregue a extensão.";
+chrome.storage.local.get(fields.map(([, name]) => name)).then(stored => {
+  for (const [element, name] of fields) {
+    if (edited.has(name)) continue;
+    element.value = name === "interviewPrompt"
+      ? (typeof stored[name] === "string" ? stored[name] : defaultPrompt)
+      : name === "answerProvider" ? (stored[name] === "openai" ? "openai" : "gemini")
+      : (stored[name] ?? "");
+  }
+});
 
-openaiKeyInput.addEventListener("input", save);
-providerInput.addEventListener("change", save);
+document.getElementById("restore-prompt").addEventListener("click", () => {
+  promptInput.value = defaultPrompt;
+  saveField(promptInput, "interviewPrompt");
+});

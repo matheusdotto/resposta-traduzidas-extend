@@ -17,7 +17,7 @@ test('prompt de entrevista é carregado antes do gerador nas três plataformas',
  assert.ok(fs.existsSync(path.join(root,'src/interview-prompt.js')));
  for(const block of manifest.content_scripts)assert.ok(block.js.indexOf('src/interview-prompt.js')<block.js.indexOf('src/answers.js'));
  assert.match(read('options.html'),/src="src\/interview-prompt.js"/);
- assert.match(read('options.html'),/id="interview-prompt" readonly/);
+ assert.match(read('options.html'),/id="interview-prompt" maxlength="50000"/);
 });
 test('não cria janela nem mantém página ou atalho do painel separado',()=>{
  assert.equal(manifest.commands,undefined);assert.equal(fs.existsSync(path.join(root,'panel.html')),false);assert.ok(!read('background.js').includes('windows.create'));

@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Respostas em Reunião",
-  "version": "0.4.4",
+  "version": "0.4.5",
   "description": "Transcreve e traduz a fala dos outros em reuniões avisadas no Meet, Teams e Zoom e sugere respostas, usando a sua própria chave do Gemini.",
   "permissions": [
     "storage",

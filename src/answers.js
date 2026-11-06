@@ -40,17 +40,17 @@
     return `${THEIRS_MARK}\n${replies[theirLanguage][kind]}\n${MINE_MARK}\n${replies[myLanguage][kind]}`;
   }
 
-  function buildRequest({ recent, latest, context, theirLanguage, myLanguage, force }) {
+  function buildRequest({ recent, latest, context, interviewPrompt, theirLanguage, myLanguage, force }) {
     const theirs = LANGUAGE_NAMES[theirLanguage] ?? theirLanguage;
     const mine = LANGUAGE_NAMES[myLanguage] ?? myLanguage;
     const rules = [
-      globalThis.RespostasInterviewPrompt || "",
+      typeof interviewPrompt === "string" ? interviewPrompt : (globalThis.RespostasInterviewPrompt || ""),
       "Você ajuda o usuário em uma reunião, sugerindo um rascunho de resposta para ele revisar.",
       "Escreva em primeira pessoa, com linguagem oral e natural. A fala nova define a tarefa; o currículo é apenas uma fonte de fatos quando a pergunta exige experiência profissional.",
       "Responda apenas ao que foi perguntado agora. Use a conversa recente somente para resolver referências ou completar uma pergunta fragmentada; não responda novamente a perguntas antigas.",
       "Dimensione a resposta: cumprimento ou agradecimento = uma frase curta, sem apresentação; conversa social curta ou confirmação = uma frase, normalmente até 20 palavras; pergunta pessoal = responda somente ao aspecto solicitado, sem currículo espontâneo; pergunta simples = 1 a 3 frases, normalmente até 40 palavras; questão técnica ou relato de projeto = uma explicação direta de até 120 palavras por idioma. Só amplie se a pessoa pedir detalhes, exemplos, várias partes ou código.",
       "Não mencione nome completo, anos de experiência, empresas, tecnologias, formação ou objetivos se não forem necessários à pergunta. Uma saudação não é um convite para apresentar o currículo. Não acrescente um resumo profissional ao final de outra resposta.",
-      "Exemplos de proporção: Hello, Matheus. → Hi! | How are you? → I'm doing well, thank you. How about you? | Can we start? → Yes, let's start. | What are you doing at Bradesco? → responda somente sobre seu trabalho atual no Bradesco, sem narrar Itaú, formação ou toda a carreira.",
+      "Exemplos de proporção: Hello. → Hi! | How are you? → I'm doing well, thank you. How about you? | Can we start? → Yes, let's start. | What are you working on? → responda somente sobre o trabalho perguntado, usando o contexto fornecido, sem narrar toda a carreira.",
       "Para perguntas sobre vida pessoal ou motivação, use apenas os dados pessoais confirmados. Para conceitos técnicos, explique o conceito e não conte a trajetória. Para episódios comportamentais, não trate dicas e exemplos genéricos de entrevista como histórias reais do usuário.",
       "Tecnologia fora do currículo pode receber uma explicação conceitual simples, sem alegar especialização ou experiência prática. Se perguntarem se o usuário já a utilizou e isso não foi informado, sinalize a lacuna; não deduza que nunca usou nem invente projetos.",
       "Não invente fatos, números ou compromissos sobre o usuário. Se faltar informação, escreva entre colchetes o que ele precisa completar; nunca lhe atribua um conflito, erro, defeito ou resultado que não foi informado.",

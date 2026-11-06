@@ -1,4 +1,4 @@
-# Respostas em Reunião — 0.4.4
+# Respostas em Reunião — 0.4.5
 
 Painel dentro da aba do Google Meet, do Teams ou do Zoom (sempre no navegador) para transcrever e traduzir a fala dos outros e sugerir respostas em reuniões avisadas. Não abre janela própria e não pede o microfone.
 
@@ -100,3 +100,14 @@ Validação da versão 0.4.3: **144 testes Node passaram**, incluindo modos auto
 Em Configurações, preencha as chaves do Gemini e da OpenAI nos campos separados. Selecione Gemini ou GPT (OpenAI) em Provedor das sugestões de resposta. O padrão é Gemini e o GPT usa gpt-4.1-mini. A transcrição e a tradução usam a chave Gemini. A escolha é aplicada ao ligar a captura. Para trocar durante uma reunião, salve a seleção, desligue e ligue novamente.
 
 Ao atualizar, recarregue a extensão e a aba da reunião. Autorize o acesso à API da OpenAI caso o navegador solicite.
+
+
+## Prompt editável na versão 0.4.5
+
+Em Configurações, edite **Seu prompt e contexto para respostas**. O campo começa preenchido com o prompt anterior nas instalações sem uma personalização salva. Você pode substituir todo o conteúdo pelo contexto desejado. O prompt é salvo automaticamente e aplicado aos próximos pedidos de resposta ao Gemini ou GPT, inclusive com captura ativa. Uma resposta já iniciada usa o prompt do momento do pedido.
+
+Se o campo for salvo vazio, a IA usa apenas as regras gerais de resposta. **Restaurar prompt original** repõe o currículo e as instruções originais. O campo Contexto adicional da reunião complementa o prompt. Os dados desse prompt são enviados ao provedor escolhido ao solicitar uma sugestão.
+
+Atualize os arquivos da extensão, recarregue a extensão e a aba da reunião e confira a versão 0.4.5.
+
+Validação da versão 0.4.5: 148 testes automatizados passaram com serviços simulados. Incluem substituição e persistência do prompt, campo vazio, restauração do original e preservação das chaves. Não houve teste com API real nesta execução.

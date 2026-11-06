@@ -24,20 +24,19 @@
     <label for="answer-provider">Provedor das sugestões de resposta</label>
     <select id="answer-provider"><option value="gemini">Gemini</option><option value="openai">GPT (OpenAI)</option></select>
     <p class="note">A chave Gemini é necessária para transcrição e tradução. As sugestões usam o provedor selecionado. Se alterar a seleção durante a captura, desligue e ligue novamente.</p>
+    <label for="interview-prompt">Seu prompt e contexto para respostas</label>
+    <textarea id="interview-prompt" maxlength="50000" spellcheck="false" style="min-height:360px" placeholder="Coloque aqui seu prompt com os conhecimentos e o contexto que a IA deve usar nas respostas. Inclua seu perfil, experiências, assunto da reunião e instruções de tom e tamanho."></textarea>
+    <p class="note">Edite o contexto atual ou substitua pelo seu. Salvo automaticamente neste navegador e usado nos próximos pedidos ao provedor selecionado. Deixar vazio usa apenas as regras gerais de resposta.</p>
+    <button id="restore-prompt" type="button">Restaurar prompt original</button>
     <label for="context">Contexto adicional da reunião</label>
     <textarea id="context" placeholder="Seu cargo, o projeto, prazos e o que mais ajudar nas respostas."></textarea>
-    <p class="note">O currículo de Matheus e as instruções de entrevista Java já estão incluídos. Este campo complementa o contexto e é enviado ao provedor selecionado a cada pedido de resposta. Não inclua senhas ou dados confidenciais.</p>
+    <p class="note">Este campo complementa o prompt acima com detalhes da reunião e é enviado ao provedor selecionado a cada pedido de resposta. Não inclua senhas ou dados confidenciais.</p>
     <p class="saved" id="saved"></p>
     <p class="note">
       A fala dos participantes é enviada ao Google. Avise todos antes de ligar. Na faixa gratuita, o
       conteúdo enviado para a transcrição pode ser usado para melhorar os produtos do Google.
     </p>
-    <details style="margin-top:20px">
-      <summary>Ver currículo e instruções de entrevista incluídos</summary>
-      <label for="interview-prompt">Contexto padrão usado nas respostas</label>
-      <textarea id="interview-prompt" readonly spellcheck="false" style="min-height:360px"></textarea>
-      <p class="note">Incluído automaticamente em cada pedido de resposta. Os dados pessoais só devem aparecer quando a pergunta pedir. Use o campo de contexto adicional para complementar as informações.</p>
-    </details>
+
     <script src="src/interview-prompt.js"></script>
     <script src="options.js"></script>
   </body>
